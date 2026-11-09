@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Panda Chat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+  body { background: #121212; color: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #loginScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; background: #181818; }
+  #loginScreen h1 { color: #ffcc00; margin-bottom: 20px; }
+  #loginScreen input { padding: 15px; border-radius: 8px; border: none; width: 100%; max-width: 300px; margin-bottom: 15px; font-size: 16px; outline: none; }
+  #loginScreen button { padding: 15px 30px; border-radius: 8px; border: none; background: #ffcc00; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; }
+  #chatScreen { display: none; flex-direction: column; height: 100vh; }
+  .header { background: #181818; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #282828; }
+  .online-badge { background: #2ecc71; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+  .messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 15px; position: relative; word-wrap: break-word; }
+  .msg-mine { align-self: flex-end; background: #ffcc00; color: #000; border-bottom-right-radius: 3px; }
+  .msg-other { align-self: flex-start; background: #282828; color: #fff; border-bottom-left-radius: 3px; }
+  .msg-system { align-self: center; background: transparent; color: #888; font-size: 12px; font-style: italic; }
+  .msg-name { font-size: 11px; font-weight: bold; margin-bottom: 3px; opacity: 0.8; }
+  .msg-time { font-size: 10px; opacity: 0.6; text-align: right; margin-top: 5px; }
+  .input-area { padding: 15px; background: #181818; display: flex; gap: 10px; border-top: 1px solid #282828; }
+  .input-area input { flex-grow: 1; padding: 12px 15px; border-radius: 20px; border: none; background: #282828; color: #fff; font-size: 16px; outline: none; }
+  .input-area button { background: #ffcc00; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+  .input-area button svg { fill: #000; width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<div id="loginScreen">
+  <h1>⚡ Panda Chat</h1>
+  <input type="text" id="nameInput" placeholder="Твое имя..." maxlength="15">
+  <button onclick="joinChat()">Войти в чат</button>
+</div>
+<div id="chatScreen">
+  <div class="header">
+    <h2>💬 Общий чат</h2>
+    <div class="online-badge">Онлайн: <span id="onlineCount">0</span></div>
+  </div>
+  <div class="messages" id="messages"></div>
+  <div class="input-area">
+    <input type="text" id="messageInput" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+    <button onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+  </div>
+</div>
+<script>
+let ws;
+let myName = "";
+
+// ВСТАВЬ СЮДА ССЫЛКУ С RENDER (например, wss://panda-chat-xxxx.onrender.com)
+const SERVER_URL = "wss://ТВОЯ_ССЫЛКА_С_RENDER.onrender.com"; 
+
+function joinChat() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return alert("Введи имя!");
+  myName = name;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('chatScreen').style.display = 'flex';
+  connectWebSocket();
+}
+
+function connectWebSocket() {
+  ws = new WebSocket(SERVER_URL);
+  ws.onopen = () => ws.send(JSON.stringify({ type: "join", name: myName }));
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "history") {
+      document.getElementById('messages').innerHTML = '';
+      data.data.forEach(msg => addMessageToUI(msg));
+    } else if (data.type === "message") {
+      addMessageToUI(data);
+    } else if (data.type === "users") {
+      document.getElementById('onlineCount').innerText = data.data.length;
+    }
+  };
+  ws.onerror = (e) => {
+    alert("Ошибка соединения. Проверь ссылку на Render!");
+  };
+}
+
+function addMessageToUI(msg) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  if (msg.name === "Система") {
+    div.className = 'msg msg-system';
+    div.innerText = msg.text;
+  } else {
+    const isMine = msg.name === myName;
+    div.className = `msg ${isMine ? 'msg-mine' : 'msg-other'}`;
+    div.innerHTML = `${!isMine ? `<div class="msg-name">${msg.name}</div>` : ''}<div>${escapeHtml(msg.text)}</div><div class="msg-time">${msg.time}</div>`;
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: "message", text: text }));
+  input.value = "";
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.innerText = text;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
