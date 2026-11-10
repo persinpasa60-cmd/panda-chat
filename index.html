@@ -3,103 +3,262 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Panda Chat</title>
+<title>Panda Messenger</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-  body { background: #121212; color: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-  #loginScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; background: #181818; }
-  #loginScreen h1 { color: #ffcc00; margin-bottom: 20px; }
-  #loginScreen input { padding: 15px; border-radius: 8px; border: none; width: 100%; max-width: 300px; margin-bottom: 15px; font-size: 16px; outline: none; }
-  #loginScreen button { padding: 15px 30px; border-radius: 8px; border: none; background: #ffcc00; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; }
-  #chatScreen { display: none; flex-direction: column; height: 100vh; }
-  .header { background: #181818; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #282828; }
-  .online-badge { background: #2ecc71; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
-  .messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 15px; position: relative; word-wrap: break-word; }
-  .msg-mine { align-self: flex-end; background: #ffcc00; color: #000; border-bottom-right-radius: 3px; }
-  .msg-other { align-self: flex-start; background: #282828; color: #fff; border-bottom-left-radius: 3px; }
-  .msg-system { align-self: center; background: transparent; color: #888; font-size: 12px; font-style: italic; }
-  .msg-name { font-size: 11px; font-weight: bold; margin-bottom: 3px; opacity: 0.8; }
-  .msg-time { font-size: 10px; opacity: 0.6; text-align: right; margin-top: 5px; }
-  .input-area { padding: 15px; background: #181818; display: flex; gap: 10px; border-top: 1px solid #282828; }
-  .input-area input { flex-grow: 1; padding: 12px 15px; border-radius: 20px; border: none; background: #282828; color: #fff; font-size: 16px; outline: none; }
-  .input-area button { background: #ffcc00; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
-  .input-area button svg { fill: #000; width: 20px; height: 20px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: #0e1621; color: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #loginScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; background: #17212b; }
+  #loginScreen h1 { color: #fff; margin-bottom: 10px; font-size: 24px; }
+  #loginScreen p { color: #7f91a4; margin-bottom: 30px; font-size: 14px; text-align: center; }
+  #loginScreen input { padding: 15px; border-radius: 10px; border: none; width: 100%; max-width: 300px; margin-bottom: 15px; font-size: 16px; outline: none; background: #242f3d; color: #fff; }
+  #loginScreen button { padding: 15px 30px; border-radius: 10px; border: none; background: #5288c1; color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; max-width: 300px; }
+  #appScreen { display: none; flex-direction: column; height: 100vh; background: #0e1621; }
+  .header { background: #17212b; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #101921; height: 60px; }
+  .header-title { font-size: 18px; font-weight: 500; }
+  .coins-badge { color: #ffcc00; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 5px; background: #242f3d; padding: 5px 12px; border-radius: 15px; }
+  #chatList { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .chat-item { display: flex; align-items: center; gap: 15px; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #101921; }
+  .avatar { width: 50px; height: 50px; border-radius: 50%; background: #5288c1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #fff; font-size: 20px; flex-shrink: 0; }
+  .chat-info h3 { font-size: 16px; font-weight: 500; margin-bottom: 3px; }
+  .chat-info p { font-size: 14px; color: #7f91a4; }
+  .online-status { width: 12px; height: 12px; background: #2ecc71; border-radius: 50%; border: 2px solid #17212b; position: absolute; bottom: 0; right: 0; }
+  #dialogScreen { display: none; flex-direction: column; height: 100vh; background: #0e1621; position: absolute; top: 0; left: 0; width: 100%; z-index: 10; }
+  .back-btn { background: none; border: none; cursor: pointer; padding: 5px; margin-right: 10px; }
+  .back-btn svg { fill: #7f91a4; width: 24px; height: 24px; }
+  .messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://web.telegram.org/a/chat-bg-br.png'); background-size: cover; background-blend-mode: overlay; background-color: #0e1621; }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 15px; position: relative; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .msg-mine { align-self: flex-end; background: #2b5278; color: #fff; border-bottom-right-radius: 4px; }
+  .msg-other { align-self: flex-start; background: #182533; color: #fff; border-bottom-left-radius: 4px; }
+  .msg-info { float: right; display: flex; align-items: center; gap: 4px; margin-left: 10px; margin-top: 5px; font-size: 11px; color: #7f91a4; }
+  .msg-gift { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #000; font-weight: bold; text-align: center; padding: 15px; border-radius: 15px; align-self: center; margin: 10px 0; box-shadow: 0 4px 15px rgba(255,150,150,0.3); }
+  .msg-gift .gift-icon { font-size: 40px; margin-bottom: 5px; }
+  .input-area { padding: 10px 15px; background: #17212b; display: flex; gap: 10px; align-items: center; }
+  .input-area input { flex-grow: 1; padding: 12px 15px; border-radius: 20px; border: none; background: #242f3d; color: #fff; font-size: 16px; outline: none; }
+  .input-area button { background: none; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+  .input-area button svg { fill: #5288c1; width: 24px; height: 24px; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #2b5278; border-radius: 3px; }
+  #shopModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 20; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+  .shop-content { background: #17212b; padding: 20px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; }
+  .shop-content h2 { margin-bottom: 15px; color: #fff; }
+  .gift-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #242f3d; margin-bottom: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+  .gift-item:hover { background: #2b5278; transform: scale(1.02); }
+  .gift-name { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+  .gift-price { color: #ffcc00; font-weight: bold; }
 </style>
 </head>
 <body>
+
 <div id="loginScreen">
-  <h1>⚡ Panda Chat</h1>
-  <input type="text" id="nameInput" placeholder="Твое имя..." maxlength="15">
-  <button onclick="joinChat()">Войти в чат</button>
+  <h1>Panda Messenger</h1>
+  <p>Введите ваш никнейм для входа</p>
+  <input type="text" id="nameInput" placeholder="Например: Panda" maxlength="15">
+  <button onclick="joinChat()" id="loginBtn">Войти</button>
 </div>
-<div id="chatScreen">
+
+<div id="appScreen">
   <div class="header">
-    <h2>💬 Общий чат</h2>
-    <div class="online-badge">Онлайн: <span id="onlineCount">0</span></div>
+    <div class="header-title">Чаты</div>
+    <div class="coins-badge">🪙 <span id="coinBalance">0</span></div>
+  </div>
+  <div id="chatList"></div>
+</div>
+
+<div id="dialogScreen">
+  <div class="header">
+    <div style="display:flex; align-items:center;">
+      <button class="back-btn" onclick="closeDialog()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <div class="header-title" id="dialogName">Чат</div>
+    </div>
+    <button class="back-btn" onclick="openShop()" title="Отправить подарок">
+      <svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>
+    </button>
   </div>
   <div class="messages" id="messages"></div>
   <div class="input-area">
-    <input type="text" id="messageInput" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+    <input type="text" id="messageInput" placeholder="Написать сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
     <button onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
   </div>
 </div>
+
+<div id="shopModal">
+  <div class="shop-content">
+    <h2>🎁 Магазин подарков</h2>
+    <p style="color:#7f91a4; margin-bottom:15px; font-size:14px;">Выбери подарок для <b id="shopReceiver"></b></p>
+    <div class="gift-item" onclick="buyGift('🐻 Мишка Тедди', 50)"><span class="gift-name">🐻 Мишка Тедди</span> <span class="gift-price">50 🪙</span></div>
+    <div class="gift-item" onclick="buyGift('🌹 Роза', 20)"><span class="gift-name">🌹 Роза</span> <span class="gift-price">20 🪙</span></div>
+    <div class="gift-item" onclick="buyGift('🍕 Пицца', 100)"><span class="gift-name">🍕 Пицца</span> <span class="gift-price">100 🪙</span></div>
+    <div class="gift-item" onclick="buyGift('💎 Бриллиант', 500)"><span class="gift-name">💎 Бриллиант</span> <span class="gift-price">500 🪙</span></div>
+    <button onclick="document.getElementById('shopModal').style.display='none'" style="background:#5288c1; padding:10px 20px; border:none; border-radius:8px; color:#fff; margin-top:10px; width:100%; font-weight:bold; cursor:pointer;">Закрыть</button>
+  </div>
+</div>
+
 <script>
 let ws;
 let myName = "";
+let currentChatWith = null;
+let onlineUsers = [];
+let myCoins = 0;
 
-// ВСТАВЬ СЮДА ССЫЛКУ С RENDER (например, wss://panda-chat-xxxx.onrender.com)
-const SERVER_URL = "wss://ТВОЯ_ССЫЛКА_С_RENDER.onrender.com"; 
+const SERVER_URL = "wss://panda-chat-0zww.onrender.com/"; 
+
+window.onload = () => {
+  const savedName = localStorage.getItem('pandaName');
+  if (savedName) {
+    myName = savedName;
+    connectWebSocket();
+  }
+};
 
 function joinChat() {
   const name = document.getElementById('nameInput').value.trim();
-  if (!name) return alert("Введи имя!");
+  if (!name) return alert("Введи никнейм!");
   myName = name;
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('chatScreen').style.display = 'flex';
+  localStorage.setItem('pandaName', myName);
   connectWebSocket();
 }
 
 function connectWebSocket() {
+  const btn = document.getElementById('loginBtn');
+  btn.innerText = "Подключение...";
+  btn.disabled = true;
+
   ws = new WebSocket(SERVER_URL);
-  ws.onopen = () => ws.send(JSON.stringify({ type: "join", name: myName }));
+  
+  // Жесткий таймаут на 6 секунд
+  const timeout = setTimeout(() => {
+    if (ws.readyState !== WebSocket.OPEN) {
+      ws.close();
+      alert("Сервер не отвечает. Открой https://panda-chat-0zww.onrender.com, подожди 30 сек, и попробуй снова.");
+      btn.innerText = "Войти";
+      btn.disabled = false;
+    }
+  }, 6000);
+
+  ws.onopen = () => {
+    clearTimeout(timeout);
+    btn.innerText = "Войти";
+    btn.disabled = false;
+    ws.send(JSON.stringify({ type: "join", name: myName }));
+  };
+  
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    if (data.type === "history") {
+    if (data.type === "auth") {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'flex';
+    }
+    else if (data.type === "balance") {
+      myCoins = data.coins;
+      document.getElementById('coinBalance').innerText = myCoins;
+    }
+    else if (data.type === "users") {
+      onlineUsers = data.data;
+      renderChatList();
+    }
+    else if (data.type === "message") {
+      if ((data.from === currentChatWith && data.to === myName) || (data.from === myName && data.to === currentChatWith)) {
+        addMessageToUI(data);
+      }
+    }
+    else if (data.type === "history") {
       document.getElementById('messages').innerHTML = '';
       data.data.forEach(msg => addMessageToUI(msg));
-    } else if (data.type === "message") {
-      addMessageToUI(data);
-    } else if (data.type === "users") {
-      document.getElementById('onlineCount').innerText = data.data.length;
     }
   };
+  
   ws.onerror = (e) => {
-    alert("Ошибка соединения. Проверь ссылку на Render!");
+    clearTimeout(timeout);
+    btn.innerText = "Войти";
+    btn.disabled = false;
   };
 }
 
-function addMessageToUI(msg) {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  if (msg.name === "Система") {
-    div.className = 'msg msg-system';
-    div.innerText = msg.text;
-  } else {
-    const isMine = msg.name === myName;
-    div.className = `msg ${isMine ? 'msg-mine' : 'msg-other'}`;
-    div.innerHTML = `${!isMine ? `<div class="msg-name">${msg.name}</div>` : ''}<div>${escapeHtml(msg.text)}</div><div class="msg-time">${msg.time}</div>`;
+function renderChatList() {
+  const list = document.getElementById('chatList');
+  list.innerHTML = '';
+  const others = onlineUsers.filter(u => u.name !== myName);
+  
+  if (others.length === 0) {
+    list.innerHTML = '<p style="text-align:center; padding:20px; color:#7f91a4;">Пока никого нет онлайн :(</p>';
+    return;
   }
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+
+  others.forEach(user => {
+    const div = document.createElement('div');
+    div.className = 'chat-item';
+    div.innerHTML = `
+      <div style="position: relative;">
+        <div class="avatar">${user.name[0].toUpperCase()}</div>
+        <div class="online-status"></div>
+      </div>
+      <div class="chat-info"><h3>${user.name}</h3><p>в сети</p></div>
+    `;
+    div.onclick = () => openDialog(user.name);
+    list.appendChild(div);
+  });
+}
+
+function openDialog(name) {
+  currentChatWith = name;
+  document.getElementById('dialogName').innerText = name;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('dialogScreen').style.display = 'flex';
+  document.getElementById('messages').innerHTML = '';
+  ws.send(JSON.stringify({ type: "get_history", with: name }));
+}
+
+function closeDialog() {
+  currentChatWith = null;
+  document.getElementById('dialogScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'flex';
 }
 
 function sendMessage() {
   const input = document.getElementById('messageInput');
   const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ type: "message", text: text }));
+  if (!text || !currentChatWith) return;
+  
+  const msgData = {
+    type: "message", from: myName, to: currentChatWith,
+    text: text, time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})
+  };
+  ws.send(JSON.stringify(msgData));
+  addMessageToUI(msgData);
   input.value = "";
+}
+
+function openShop() {
+  if (!currentChatWith) return;
+  document.getElementById('shopReceiver').innerText = currentChatWith;
+  document.getElementById('shopModal').style.display = 'flex';
+}
+
+function buyGift(giftName, price) {
+  if (myCoins < price) {
+    alert("Недостаточно монет! Попроси админа начислить.");
+    return;
+  }
+  ws.send(JSON.stringify({ type: "buy_gift", gift: giftName, to: currentChatWith, price: price }));
+  document.getElementById('shopModal').style.display = 'none';
+}
+
+function addMessageToUI(msg) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  const isMine = msg.from === myName;
+  
+  if (msg.text.startsWith('🎁 ПОДАРОК:')) {
+    div.className = 'msg msg-gift';
+    const giftName = msg.text.replace('🎁 ПОДАРОК: ', '');
+    div.innerHTML = `<div class="gift-icon">🎁</div><div>Подарок!</div><div style="font-size:24px; margin: 5px 0;">${giftName}</div><div style="font-size:12px; opacity:0.7;">от ${msg.from}</div>`;
+  } else {
+    div.className = `msg ${isMine ? 'msg-mine' : 'msg-other'}`;
+    div.innerHTML = `<div>${escapeHtml(msg.text)}</div><div class="msg-info"><span>${msg.time}</span></div>`;
+  }
+  
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
 }
 
 function escapeHtml(text) {
