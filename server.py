@@ -9,7 +9,7 @@ USERS_FILE = "users.json"
 
 connected_clients = {}
 private_messages = {}
-users_data = {} # {"Panda": {"coins": 100, "gifts": []}}
+users_data = {} # {"Panda": {"coins": 100}}
 
 def load_db():
     global private_messages, users_data
@@ -36,6 +36,7 @@ def get_chat_key(u1, u2):
     return "|".join(sorted([u1, u2]))
 
 async def notify_users():
+    # Отправляем всем актуальный список тех, кто онлайн
     users_list = [{"name": name, "status": "online"} for name in connected_clients.values()]
     message = json.dumps({"type": "users", "data": users_list})
     if connected_clients:
@@ -52,11 +53,14 @@ async def handle_client(websocket):
             
             # Создаем юзера, если его нет
             if username not in users_data:
-                users_data[username] = {"coins": 0, "gifts": []}
+                users_data[username] = {"coins": 0}
                 save_db()
 
+            # Отправляем подтверждение и баланс
             await websocket.send(json.dumps({"type": "auth", "status": "success"}))
             await websocket.send(json.dumps({"type": "balance", "coins": users_data[username]["coins"]}))
+            
+            # Оповещаем ВСЕХ, что зашел новый юзер
             await notify_users()
 
         async for message in websocket:
@@ -95,7 +99,6 @@ async def handle_client(websocket):
                 
                 if users_data[sender]["coins"] >= price:
                     users_data[sender]["coins"] -= price
-                    users_data[receiver]["gifts"].append(gift)
                     save_db()
                     
                     await websocket.send(json.dumps({"type": "balance", "coins": users_data[sender]["coins"]}))
@@ -112,6 +115,22 @@ async def handle_client(websocket):
                     for ws, name in connected_clients.items():
                         if name == receiver or name == sender:
                             await ws.send(json.dumps(gift_msg))
+
+            elif data.get("type") == "admin_give_coins":
+                target_nick = data.get("nick")
+                amount = data.get("coins", 0)
+                
+                if target_nick in users_data:
+                    users_data[target_nick]["coins"] += amount
+                    save_db()
+                    
+                    for ws, name in connected_clients.items():
+                        if name == target_nick:
+                            await ws.send(json.dumps({"type": "balance", "coins": users_data[target_nick]["coins"]}))
+                    
+                    await websocket.send(json.dumps({"status": "ok"}))
+                else:
+                    await websocket.send(json.dumps({"status": "error", "message": "Пользователь не найден"}))
 
     except websockets.exceptions.ConnectionClosed:
         pass
