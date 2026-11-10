@@ -5,25 +5,32 @@ import datetime
 import os
 
 DB_FILE = "db.json"
+USERS_FILE = "users.json"
+
 connected_clients = {}
 private_messages = {}
+users_data = {} # {"Panda": {"coins": 100, "gifts": []}}
 
 def load_db():
-    global private_messages
+    global private_messages, users_data
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 private_messages = json.load(f)
-            print(f"Loaded chats: {len(private_messages)}")
-        except Exception as e:
-            print(f"DB load error: {e}")
+        except: pass
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                users_data = json.load(f)
+        except: pass
 
 def save_db():
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(private_messages, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"DB save error: {e}")
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users_data, f, ensure_ascii=False, indent=2)
+    except Exception as e: print(f"Save error: {e}")
 
 def get_chat_key(u1, u2):
     return "|".join(sorted([u1, u2]))
@@ -42,33 +49,33 @@ async def handle_client(websocket):
         if data.get("type") == "join":
             username = data.get("name", "Anon")
             connected_clients[websocket] = username
+            
+            # Создаем юзера, если его нет
+            if username not in users_data:
+                users_data[username] = {"coins": 0, "gifts": []}
+                save_db()
+
             await websocket.send(json.dumps({"type": "auth", "status": "success"}))
+            await websocket.send(json.dumps({"type": "balance", "coins": users_data[username]["coins"]}))
             await notify_users()
 
         async for message in websocket:
             data = json.loads(message)
+            sender = connected_clients[websocket]
             
             if data.get("type") == "message":
                 receiver = data.get("to")
-                sender = connected_clients[websocket]
                 text = data.get("text")
-                
                 chat_key = get_chat_key(sender, receiver)
+                
                 msg_obj = {
-                    "type": "message",
-                    "from": sender,
-                    "to": receiver,
-                    "text": text,
-                    "time": datetime.datetime.now().strftime("%H:%M")
+                    "type": "message", "from": sender, "to": receiver,
+                    "text": text, "time": datetime.datetime.now().strftime("%H:%M")
                 }
                 
-                if chat_key not in private_messages:
-                    private_messages[chat_key] = []
+                if chat_key not in private_messages: private_messages[chat_key] = []
                 private_messages[chat_key].append(msg_obj)
-                
-                if len(private_messages[chat_key]) > 100:
-                    private_messages[chat_key].pop(0)
-                
+                if len(private_messages[chat_key]) > 100: private_messages[chat_key].pop(0)
                 save_db()
 
                 for ws, name in connected_clients.items():
@@ -77,10 +84,34 @@ async def handle_client(websocket):
             
             elif data.get("type") == "get_history":
                 other_user = data.get("with")
-                sender = connected_clients[websocket]
                 chat_key = get_chat_key(sender, other_user)
                 history = private_messages.get(chat_key, [])
                 await websocket.send(json.dumps({"type": "history", "data": history}))
+                
+            elif data.get("type") == "buy_gift":
+                gift = data.get("gift")
+                receiver = data.get("to")
+                price = data.get("price")
+                
+                if users_data[sender]["coins"] >= price:
+                    users_data[sender]["coins"] -= price
+                    users_data[receiver]["gifts"].append(gift)
+                    save_db()
+                    
+                    await websocket.send(json.dumps({"type": "balance", "coins": users_data[sender]["coins"]}))
+                    
+                    gift_msg = {
+                        "type": "message", "from": sender, "to": receiver,
+                        "text": f"🎁 ПОДАРОК: {gift}", "time": datetime.datetime.now().strftime("%H:%M")
+                    }
+                    chat_key = get_chat_key(sender, receiver)
+                    if chat_key not in private_messages: private_messages[chat_key] = []
+                    private_messages[chat_key].append(gift_msg)
+                    save_db()
+                    
+                    for ws, name in connected_clients.items():
+                        if name == receiver or name == sender:
+                            await ws.send(json.dumps(gift_msg))
 
     except websockets.exceptions.ConnectionClosed:
         pass
