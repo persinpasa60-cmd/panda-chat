@@ -9,7 +9,7 @@ USERS_FILE = "users.json"
 
 connected_clients = {}
 private_messages = {}
-users_data = {} # {"Panda": {"coins": 100}}
+users_data = {}
 
 def load_db():
     global private_messages, users_data
@@ -17,12 +17,12 @@ def load_db():
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 private_messages = json.load(f)
-        except: pass
+        except Exception as e: print("Ошибка загрузки db.json:", e)
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
                 users_data = json.load(f)
-        except: pass
+        except Exception as e: print("Ошибка загрузки users.json:", e)
 
 def save_db():
     try:
@@ -30,13 +30,13 @@ def save_db():
             json.dump(private_messages, f, ensure_ascii=False, indent=2)
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(users_data, f, ensure_ascii=False, indent=2)
-    except Exception as e: print(f"Save error: {e}")
+    except Exception as e: 
+        print("Ошибка сохранения:", e)
 
 def get_chat_key(u1, u2):
     return "|".join(sorted([u1, u2]))
 
 async def notify_users():
-    # Отправляем всем актуальный список тех, кто онлайн
     users_list = [{"name": name, "status": "online"} for name in connected_clients.values()]
     message = json.dumps({"type": "users", "data": users_list})
     if connected_clients:
@@ -51,16 +51,12 @@ async def handle_client(websocket):
             username = data.get("name", "Anon")
             connected_clients[websocket] = username
             
-            # Создаем юзера, если его нет
             if username not in users_data:
                 users_data[username] = {"coins": 0}
                 save_db()
 
-            # Отправляем подтверждение и баланс
             await websocket.send(json.dumps({"type": "auth", "status": "success"}))
             await websocket.send(json.dumps({"type": "balance", "coins": users_data[username]["coins"]}))
-            
-            # Оповещаем ВСЕХ, что зашел новый юзер
             await notify_users()
 
         async for message in websocket:
